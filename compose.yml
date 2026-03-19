@@ -1,0 +1,14 @@
+services:
+    z2m_converter:
+        build: ./decoder
+        container_name: milesight_converter
+        restart: unless-stopped
+        environment:
+            - IOTOPEN_MQTT_HOST=${IOTOPEN_MQTT_HOST}
+            - IOTOPEN_MQTT_PORT=${IOTOPEN_MQTT_PORT}
+            - IOTOPEN_MQTT_USERNAME=${IOTOPEN_MQTT_USERNAME}
+            - IOTOPEN_MQTT_PASSWORD=${IOTOPEN_MQTT_PASSWORD}
+            - IOTOPEN_CLIENT_ID=${IOTOPEN_CLIENT_ID}
+            - IOTOPEN_INSTALLATION_ID=${IOTOPEN_INSTALLATION_ID}
+            - IOTOPEN_BASEURL=${IOTOPEN_BASEURL}
+            - PYTHONUNBUFFERED=1
