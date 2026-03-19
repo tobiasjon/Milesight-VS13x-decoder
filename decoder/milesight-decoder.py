@@ -15,8 +15,9 @@ import signal
 import sys
 import threading
 
-
+#Only read local .env file for debug. remove when done and use OS environtment inside docker
 load_dotenv()
+
 class Config:
     IOTOPEN_MQTT_HOST = os.getenv("IOTOPEN_MQTT_HOST", "mqtt")
     IOTOPEN_MQTT_PORT = int(os.getenv("IOTOPEN_MQTT_PORT", 1883))
@@ -45,7 +46,6 @@ def on_connect_iot(client, userdata, flags, rc, properties):
 
 def send_values_to_iotopen(client, userdata, msg):
     z2m_values = json.loads(msg.payload.decode())
-    #print(f'topic={msg.topic}' )
     logger.info(f'Device updated: {msg.topic}')    
     for z2m_key, z2m_value in z2m_values.items(): 
         logger.debug(f'{z2m_key}={z2m_value}')
@@ -55,49 +55,18 @@ def decode_incomming(client, userdata, msg):
     device = json.loads(msg.payload)
     logger.info(f'{device}')
     device_info=device.get("device_info", {})
-    #logger.info(f'mac: {device_info.get("device_mac")}')
-    #logger.info(f'name: {device_info.get("device_name")}')
-    #logger.info(f'sn: {device_info.get("device_sn")}')
-    #logger.info(f'firmware: {device_info.get("firmware_version")}')
-    #logger.info(f'hardware: {device_info.get("hardware_version")}')
-    #logger.info(f'IP: {device_info.get("ip_address")}')
-    #logger.info(f'runningtime: {device_info.get("running_time")}')
+
     device_exists=iot_create_device(device_info)
     device_id=int(device_exists.get('id'))
+
     if device.get("line_periodic_data")!=None:
         for line in device.get("line_periodic_data"):
             logger.info(f'{line}')
             iot_create_function('in',device_info, line, device_id)
             iot_create_function('out',device_info, line, device_id)
-#            client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/{device_info.get("device_mac")}/{line.get("line_uuid")}/in',json.dumps(iot_open_value(line.get("in"))))
-#            client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/{device_info.get("device_mac")}/{line.get("line_uuid")}/out',json.dumps(iot_open_value(line.get("out"))))
             client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/in',json.dumps(iot_open_value(line.get("in"))))
             client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/out',json.dumps(iot_open_value(line.get("out"))))
 
-
-def check_devices_in_iotopen(client, userdata, msg):
-    devices = json.loads(msg.payload)
-    coordinators = []
-    end_devices = []
-    
-    for device in devices:
-        if device.get("type") == "Coordinator":
-            coordinators.append(device)
-        elif device.get("type") == "EndDevice":
-            end_devices.append(device)
-            #print(device.get("friendly_name"))
-            device_exist=iot_create_device(device).json()
-            if device_exist!=[]:
-                device_id=device_exist.get('id')
-            else:
-                device_id=0
-            definitions = device.get("definition")
-            exposes = definitions.get("exposes")
-            for value in exposes:
-                #print(f'{value.get("name")}')
-                logger.debug(iot_create_function(value.get("name"), value.get("property"),device.get("ieee_address"),value, device_id))
-    logger.info(f'Coordinators:, {len(coordinators)}')
-    logger.info(f'End devices:, {len(end_devices)}')
 
 def iot_create_device(device_info):
     headers = {
@@ -116,9 +85,7 @@ def iot_create_device(device_info):
             "hardware_version": f'{device_info.get("hardware_version")}'
         }
     }
-    #print(payload)
     iot_devicexists = requests.get(f"{Config.IOTOPEN_BASEURL}/api/v2/devicex/{Config.IOTOPEN_INSTALLATION_ID}?mac_address={device_info.get('device_mac')}", headers=headers, auth=login,)
-    #print(iot_devicexists.json()[0].get('id'))
     if iot_devicexists.json()==[]:
         result = requests.post(f"{Config.IOTOPEN_BASEURL}/api/v2/devicex/{Config.IOTOPEN_INSTALLATION_ID}", headers=headers, auth=login, data=json.dumps(payload) )
         return result.json()
@@ -144,15 +111,12 @@ def iot_create_function(function_name, device, line, device_id):
         }
     }
 
-    print(payload)
     iot_functionexists = requests.get(f'{Config.IOTOPEN_BASEURL}/api/v2/functionx/{Config.IOTOPEN_INSTALLATION_ID}?topic_read={topic_read}', headers=headers, auth=login)
 
     if iot_functionexists.json()==[]:
-        #print('creating')
         result = requests.post(f"{Config.IOTOPEN_BASEURL}/api/v2/functionx/{Config.IOTOPEN_INSTALLATION_ID}", headers=headers, auth=login, data=json.dumps(payload) )
         return result
     else:
-        #print('updating')
         result = requests.put(f"{Config.IOTOPEN_BASEURL}/api/v2/functionx/{Config.IOTOPEN_INSTALLATION_ID}/{iot_functionexists.json()[0].get('id')}", headers=headers, auth=login, data=json.dumps(payload) )
         return result
 
@@ -189,8 +153,7 @@ def main():
 
     logger.info('Milesight decoder starting')
 
-    #Only read local .env file for debug. remove when done and use OS environtment inside docker
-
+ 
 
     login = HTTPBasicAuth(Config.IOTOPEN_MQTT_USERNAME, Config.IOTOPEN_MQTT_PASSWORD)
     # MQTT IoT-Open
@@ -225,8 +188,7 @@ def main():
     logger.info('Starting loop')
     while True:
         time.sleep(0.1)
-        #print('loop')
-
+ 
 
 #Running
 #if __name__ == "__main__":
