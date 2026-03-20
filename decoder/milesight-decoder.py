@@ -114,11 +114,12 @@ def iot_create_function(function_name, device, line, device_id):
     iot_functionexists = requests.get(f'{Config.IOTOPEN_BASEURL}/api/v2/functionx/{Config.IOTOPEN_INSTALLATION_ID}?topic_read={topic_read}', headers=headers, auth=login)
 
     if iot_functionexists.json()==[]:
-        result = requests.post(f"{Config.IOTOPEN_BASEURL}/api/v2/functionx/{Config.IOTOPEN_INSTALLATION_ID}", headers=headers, auth=login, data=json.dumps(payload) )
+        result = requests.post(f"{Config.IOTOPEN_BASEURL}/api/v2/functionx/{Config.IOTOPEN_INSTALLATION_ID}", headers=headers, auth=login, data=json.dumps(payload) ).json()
         return result
     else:
-        result = requests.put(f"{Config.IOTOPEN_BASEURL}/api/v2/functionx/{Config.IOTOPEN_INSTALLATION_ID}/{iot_functionexists.json()[0].get('id')}", headers=headers, auth=login, data=json.dumps(payload) )
-        return result
+        return iot_functionexists.json[0]
+        #result = requests.put(f"{Config.IOTOPEN_BASEURL}/api/v2/functionx/{Config.IOTOPEN_INSTALLATION_ID}/{iot_functionexists.json()[0].get('id')}", headers=headers, auth=login, data=json.dumps(payload) )
+        #return result
 
     
 def iot_open_value(value, timestamp=None):
