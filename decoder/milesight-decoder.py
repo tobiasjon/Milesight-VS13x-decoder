@@ -15,6 +15,10 @@ import signal
 import sys
 import threading
 
+#Milesight decoder
+__version__ = "0.9.0"
+
+
 #Only read local .env file for debug. remove when done and use OS environtment inside docker
 load_dotenv()
 
@@ -90,7 +94,6 @@ def iot_create_device(device_info):
         result = requests.post(f"{Config.IOTOPEN_BASEURL}/api/v2/devicex/{Config.IOTOPEN_INSTALLATION_ID}", headers=headers, auth=login, data=json.dumps(payload) )
         return result.json()
     else:
-        #result = requests.put(f"{Config.IOTOPEN_BASEURL}/api/v2/devicex/{Config.IOTOPEN_INSTALLATION_ID}/{iot_devicexists.json()[0].get('id')}", headers=headers, auth=login, data=json.dumps(payload) )
         return iot_devicexists.json()[0]
 
 
@@ -118,8 +121,6 @@ def iot_create_function(function_name, device, line, device_id):
         return result
     else:
         return iot_functionexists
-        #result = requests.put(f"{Config.IOTOPEN_BASEURL}/api/v2/functionx/{Config.IOTOPEN_INSTALLATION_ID}/{iot_functionexists.json()[0].get('id')}", headers=headers, auth=login, data=json.dumps(payload) )
-        #return result
 
     
 def iot_open_value(value, timestamp=None):
@@ -144,15 +145,14 @@ def iot_open_value(value, timestamp=None):
     return {"timestamp": timestamp, "value": 0, "msg": f"unsupported:{type(value).__name__}"}
 
 def main():
-    global login, logger, client_iot, client_z2m, client_id
+    global login, logger, client_iot, client_id
     logging.basicConfig(
         level=logging.INFO,
         stream=sys.stdout,
         format="%(asctime)s [%(levelname)s] %(message)s"
     )
     logger = logging.getLogger(__name__)
-
-    logger.info('Milesight decoder starting')
+    logger.info(f'Milesight decoder {__version__} starting')
 
  
 
@@ -192,6 +192,5 @@ def main():
  
 
 #Running
-#if __name__ == "__main__":
 main()
 
