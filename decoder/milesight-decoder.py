@@ -16,15 +16,15 @@ import sys
 import threading
 
 #Milesight decoder
-__version__ = "0.9.0"
+__version__ = "0.9.1"
 
 
 #Only read local .env file for debug. remove when done and use OS environtment inside docker
 load_dotenv()
 
 class Config:
-    IOTOPEN_MQTT_HOST = os.getenv("IOTOPEN_MQTT_HOST", "mqtt")
-    IOTOPEN_MQTT_PORT = int(os.getenv("IOTOPEN_MQTT_PORT", 1883))
+    IOTOPEN_MQTT_HOST = os.getenv("IOTOPEN_MQTT_HOST", "")
+    IOTOPEN_MQTT_PORT = int(os.getenv("IOTOPEN_MQTT_PORT", 8883))
     IOTOPEN_MQTT_USERNAME = os.getenv("IOTOPEN_MQTT_USERNAME")
     IOTOPEN_MQTT_PASSWORD = os.getenv("IOTOPEN_MQTT_PASSWORD")
     IOTOPEN_INSTALLATION_ID = int(os.getenv("IOTOPEN_INSTALLATION_ID",0))
@@ -45,7 +45,7 @@ def handle_signal(sig, frame):
     sys.exit(0)
 
 def on_connect_iot(client, userdata, flags, rc, properties):
-    logger.info("Connected to IoT-Open")
+    logger.info(f"Connected to IoT-Open: {Config.IOTOPEN_MQTT_HOST} with the user: {Config.IOTOPEN_MQTT_USERNAME}")
     client.subscribe(f"{Config.IOTOPEN_CLIENT_ID}/+")
 
 def send_values_to_iotopen(client, userdata, msg):
@@ -65,7 +65,7 @@ def decode_incomming(client, userdata, msg):
 
     if device.get("line_periodic_data")!=None:
         for line in device.get("line_periodic_data"):
-            logger.info(f'{line}')
+            #logger.info(f'{line}')
             iot_create_function('in',device_info, line, device_id)
             iot_create_function('out',device_info, line, device_id)
             client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/in',json.dumps(iot_open_value(line.get("in"))))
@@ -145,7 +145,7 @@ def iot_open_value(value, timestamp=None):
     return {"timestamp": timestamp, "value": 0, "msg": f"unsupported:{type(value).__name__}"}
 
 def main():
-    global login, logger, client_iot, client_id
+    global login, logger, client_iot, client_id, running
     logging.basicConfig(
         level=logging.INFO,
         stream=sys.stdout,
