@@ -27,6 +27,7 @@ IOTOPEN_MQTT_PORT=$mqtt_port
 IOTOPEN_MQTT_USERNAME=$mqtt_username
 IOTOPEN_MQTT_PASSWORD=$mqtt_password
 IOTOPEN_MQTT_CLIENT_NAME=$mqtt_client_name
+DECODER_NAME=$mqtt_client_name
 IOTOPEN_CLIENT_ID=$client_id
 IOTOPEN_INSTALLATION_ID=$installation_id
 IOTOPEN_BASEURL=$baseurl
