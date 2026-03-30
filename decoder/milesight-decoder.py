@@ -145,7 +145,9 @@ def iot_open_value(value, timestamp=None):
     return {"timestamp": timestamp, "value": 0, "msg": f"unsupported:{type(value).__name__}"}
 
 def main():
-    global login, logger, client_iot, client_id, running
+    global login, logger, client_iot, running
+    
+    logging.Formatter.converter = time.localtime
     logging.basicConfig(
         level=logging.INFO,
         stream=sys.stdout,
