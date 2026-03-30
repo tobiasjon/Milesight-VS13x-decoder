@@ -13,3 +13,4 @@ services:
             - IOTOPEN_INSTALLATION_ID=${IOTOPEN_INSTALLATION_ID}
             - IOTOPEN_BASEURL=${IOTOPEN_BASEURL}
             - PYTHONUNBUFFERED=1
+            - TZ=Europe/Stockholm
