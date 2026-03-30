@@ -15,7 +15,7 @@ import sys
 import threading
 
 #Milesight decoder
-__version__ = "0.9.3"
+__version__ = "0.10.0"
 
 
 #Only read local .env file for debug. remove when done and use OS environtment inside docker
@@ -39,7 +39,6 @@ def heartbeat():
         time.sleep(300)
 
 def handle_signal(sig, frame):
-    global running
     logger.info("Shutdown signal received")
     running = False
     sys.exit(0)
@@ -70,7 +69,27 @@ def decode_incomming(client, userdata, msg):
             iot_create_function('out',device_info, line, device_id)
             client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/in',json.dumps(iot_open_value(line.get("in"))))
             client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/out',json.dumps(iot_open_value(line.get("out"))))
-
+            if line.get("children_in")!=None:
+                iot_create_function('children_in',device_info, line, device_id)
+                client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/children_in',json.dumps(iot_open_value(line.get("children_in"))))
+            if line.get("children_out")!=None:
+                iot_create_function('children_out',device_info, line, device_id)
+                client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/children_out',json.dumps(iot_open_value(line.get("children_out"))))
+    if device.get("line_total_data")!=None:
+        for line in device.get("line_total_data"):
+            if line.get("in_counted")!=None:
+                iot_create_function('in_counted',device_info, line, device_id)
+                client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/in_counted',json.dumps(iot_open_value(line.get("in_counted"))))
+            if line.get("out_counted")!=None:
+                iot_create_function('out_counted',device_info, line, device_id)
+                client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/out_counted',json.dumps(iot_open_value(line.get("out_counted"))))           
+            if line.get("children_in_counted")!=None:
+                iot_create_function('children_in_counted',device_info, line, device_id)
+                client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/children_in_counted',json.dumps(iot_open_value(line.get("children_in_counted"))))
+            if line.get("children_out_counted")!=None:
+                iot_create_function('children_out_counted',device_info, line, device_id)
+                client_iot.publish(f'{Config.IOTOPEN_CLIENT_ID}/obj/eth/{line.get("line_uuid")}/children_out_counted',json.dumps(iot_open_value(line.get("children_out_counted"))))           
+                
 
 def iot_create_device(device_info):
     headers = {
@@ -107,7 +126,7 @@ def iot_create_function(function_name, device, line, device_id):
         "installation_id": Config.IOTOPEN_INSTALLATION_ID,
         "type": 'counter',
         "meta": {
-            "name": f'{device.get("device_name")} - {line.get("line_name")} - {function_name}',
+            "name": f'{device.get("device_name")}-{line.get("line_name")}-{function_name}',
             "topic_read": topic_read,
             "device_id": f'{device_id}',
             "line_uuid": f'{line.get("line_uuid")}' 
