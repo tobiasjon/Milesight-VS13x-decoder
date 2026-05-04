@@ -15,7 +15,7 @@ import sys
 import threading
 
 #Milesight decoder
-__version__ = "0.10.1"
+__version__ = "0.11.0"
 
 
 #Only read local .env file for debug. remove when done and use OS environtment inside docker
@@ -43,9 +43,25 @@ def handle_signal(sig, frame):
     running = False
     sys.exit(0)
 
-def on_connect_iot(client, userdata, flags, rc, properties):
-    logger.info(f"Connected to IoT-Open: {Config.IOTOPEN_MQTT_HOST} with the user: {Config.IOTOPEN_MQTT_USERNAME}")
-    client.subscribe(f"{Config.IOTOPEN_CLIENT_ID}/+")
+
+def on_connect_iot(client, userdata, flags, reason_code, properties):
+    logger.info(f"Connected to IoT-Open: {Config.IOTOPEN_MQTT_HOST} with the user: {Config.IOTOPEN_MQTT_USERNAME}: result code {reason_code}")
+    client.subscribe(f"{Config.IOTOPEN_CLIENT_ID}/+", qos=1)
+
+def on_disconnect_iot(client, userdata, reason_code, properties):
+    logger.warning(f"Disconnected: {reason_code}")
+
+    for attempt in range(3):
+        try:
+            client.reconnect()
+            logger.info("Reconnected")
+            return
+        except Exception as e:
+            logger.warning(f"Reconnect attempt {attempt+1} failed: {e}")
+            time.sleep(2)
+
+    logger.error("Reconnect failed, exiting so container can restart")
+    sys.exit(1)
 
 def send_values_to_iotopen(client, userdata, msg):
     z2m_values = json.loads(msg.payload.decode())
@@ -108,12 +124,18 @@ def iot_create_device(device_info):
             "hardware_version": f'{device_info.get("hardware_version")}'
         }
     }
-    iot_devicexists = requests.get(f"{Config.IOTOPEN_BASEURL}/api/v2/devicex/{Config.IOTOPEN_INSTALLATION_ID}?mac_address={device_info.get('device_mac')}", headers=headers, auth=login,)
-    if iot_devicexists.json()==[]:
+ 
+    iot_devicexists = requests.get(f"{Config.IOTOPEN_BASEURL}/api/v2/devicex/{Config.IOTOPEN_INSTALLATION_ID}?mac_address={device_info.get('device_mac')}", headers=headers, auth=login,).json()
+   
+    if iot_devicexists==[]:
         result = requests.post(f"{Config.IOTOPEN_BASEURL}/api/v2/devicex/{Config.IOTOPEN_INSTALLATION_ID}", headers=headers, auth=login, data=json.dumps(payload) )
         return result.json()
     else:
-        return iot_devicexists.json()[0]
+        if iot_devicexists[0]["meta"]["ip"]!=device_info.get("ip_address") or iot_devicexists[0]["meta"]["firmware_version"]!=device_info.get("firmware_version"):
+            logger.info(f"{device_info.get('name')} changed, updating IoT-Open")
+            result = requests.put(f"{Config.IOTOPEN_BASEURL}/api/v2/devicex/{Config.IOTOPEN_INSTALLATION_ID}/{int(iot_devicexists[0]['id'])}", headers=headers, auth=login, data=json.dumps(payload))
+            return result.json()
+        return iot_devicexists[0]
 
 
 def iot_create_function(function_name, device, line, device_id):
@@ -175,7 +197,10 @@ def main():
     logger = logging.getLogger(__name__)
     logger.info(f'Milesight decoder {__version__} starting')
 
- 
+    running = True
+
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
 
     login = HTTPBasicAuth(Config.IOTOPEN_MQTT_USERNAME, Config.IOTOPEN_MQTT_PASSWORD)
     # MQTT IoT-Open
@@ -184,20 +209,17 @@ def main():
                 keyfile=None,
                 cert_reqs=ssl.VERIFY_DEFAULT)
 
+
     client_iot.username_pw_set(Config.IOTOPEN_MQTT_USERNAME, Config.IOTOPEN_MQTT_PASSWORD)
     client_iot.reconnect_delay_set(1, 60)
     client_iot.on_connect = on_connect_iot
+    client_iot.on_disconnect = on_disconnect_iot
     
     try:
         client_iot.connect(host=Config.IOTOPEN_MQTT_HOST, port=Config.IOTOPEN_MQTT_PORT, clean_start=mqtt.MQTT_CLEAN_START_FIRST_ONLY)
     except Exception as e:
         logger.warning(f"Error connecting to MQTT broker for Iot-Open ({Config.IOTOPEN_MQTT_HOST}:{Config.IOTOPEN_MQTT_PORT}): {e}")
         sys.exit(1)
-    
-    running = True
-
-    signal.signal(signal.SIGTERM, handle_signal)
-    signal.signal(signal.SIGINT, handle_signal)
 
     client_iot.message_callback_add(f"{Config.IOTOPEN_CLIENT_ID}/+", decode_incomming)
 
